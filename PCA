@@ -1,0 +1,57 @@
+%% 1. Генерация синтетических данных телеметрии Формулы-1
+rng(2025);  % для воспроизводимости
+nSamples = 1000;
+
+% Физически правдоподобные значения
+Speed     = 180 + 70 * randn(nSamples, 1);    % км/ч
+Throttle  = 60 + 30 * randn(nSamples, 1);     % %
+RPM       = 9000 + 2500 * randn(nSamples, 1); % об/мин
+DRS       = rand(nSamples, 1) > 0.85;         % открытое крыло (true=1)
+TyreWear  = 55 + 18 * randn(nSamples, 1);     % износ, %
+LapTime   = 82 + 3.5 * randn(nSamples, 1);    % время круга, сек
+
+% Собираем таблицу
+telemetryData = table(Speed, Throttle, RPM, DRS, TyreWear, LapTime);
+
+% Удаляем возможные NaN (в наших данных их нет, но стандартная очистка)
+telemetryData = standardizeMissing(telemetryData, -inf);
+telemetryData = rmmissing(telemetryData);
+
+% Нормализация числовых столбцов для PCA
+numericVars = varfun(@isnumeric, telemetryData, 'OutputFormat', 'uniform');
+telemetryNorm = telemetryData;
+telemetryNorm{:, numericVars} = zscore(telemetryData{:, numericVars});
+
+% Покажем первые 5 строк нормализованных данных (для проверки)
+disp('Нормализованные данные (первые 5 строк):');
+disp(telemetryNorm(1:5, :));
+%% 2. PCA на числовых признаках
+pcaVars = {'Speed', 'Throttle', 'RPM', 'TyreWear', 'LapTime'};
+X = telemetryNorm{:, pcaVars};
+
+[coeff, score, latent, tsquared, explained] = pca(X);
+
+disp('Доля объяснённой дисперсии каждой компонентой (%):');
+disp(explained');
+
+% Pareto диаграмма
+figure('Name', 'Pareto PCA');
+pareto(explained);
+xlabel('Главная компонента');
+ylabel('Доля объяснённой дисперсии (%)');
+title('Вклад каждой главной компоненты в общую дисперсию телеметрии F1');
+grid on;
+
+% Сохраняем график (опционально)
+% saveas(gcf, 'pareto_pca.png');
+
+%% 3. Биплот первых трёх главных компонент (первые две на плоскости)
+figure('Name', 'Biplot PCA');
+biplot(coeff(:,1:3), 'Scores', score(:,1:3), ...
+       'VarLabels', pcaVars, 'MarkerSize', 4);
+title('Биплот: первые три главные компоненты');
+xlabel('PC1'); ylabel('PC2'); zlabel('PC3');
+grid on;
+view(45, 20);  % угол обзора для 3D
+% Для плоского 2D-биплота (первые две компоненты) можно использовать:
+% figure; biplot(coeff(:,1:2), 'Scores', score(:,1:2), 'VarLabels', pcaVars);
