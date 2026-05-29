@@ -1,0 +1,34 @@
+%% 4. Линейная регрессия на исходных данных (не нормализованных, но это не принципиально)
+mdl_raw = fitlm(telemetryData, 'LapTime ~ Speed + Throttle + RPM + DRS + TyreWear');
+disp('=== Модель на исходных признаках ===');
+disp(mdl_raw);
+
+% Коэффициенты и их значимость
+coeff_table = mdl_raw.Coefficients;
+disp('Коэффициенты регрессии:');
+disp(coeff_table);
+
+%% 6. Предсказания и сравнение
+pred_raw = predict(mdl_raw, telemetryData);
+pred_pca = predict(mdl_pca, X_pca);
+
+figure('Name', 'Сравнение моделей');
+subplot(1,2,1);
+plot(telemetryData.LapTime, pred_raw, '.', 'MarkerSize', 8);
+xlabel('Реальное время круга (сек)');
+ylabel('Предсказанное (сек)');
+title(sprintf('Исходные признаки: R² = %.3f', mdl_raw.Rsquared.Ordinary));
+refline(1); grid on;
+axis equal tight;
+
+subplot(1,2,2);
+plot(telemetryData.LapTime, pred_pca, '.', 'MarkerSize', 8);
+xlabel('Реальное время круга (сек)');
+ylabel('Предсказанное (сек)');
+title(sprintf('PCA (%d комп.): R² = %.3f', nComp, mdl_pca.Rsquared.Ordinary));
+refline(1); grid on;
+axis equal tight;
+
+% Опционально: сохранить график
+% saveas(gcf, 'regression_comparison.png');
+
